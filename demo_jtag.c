@@ -1,6 +1,7 @@
 #include "system.h"
 #include "gpio.h"
 #include "uart.h"
+#include "timer.h"
 
 //#include "JTAGfunc430.h"           // JTAG functions
 #define TCK_PORT 2
@@ -22,11 +23,23 @@ void resetTCK(JTAGInterface *jtag);
 void setTDIO(JTAGInterface *jtag);
 void resetTDIO(JTAGInterface *jtag);
 void enterSBWMode(JTAGInterface *jtag);
+void exitSBWMode(JTAGInterface *jtag);
 
+void initTimers(){
+	timer0Init();
+	timer1InitMicrosecond();
+}
+void delay_ms(int duration){
+	delayMillisecondTimer0(duration);
+}
+void delay_us(int duration){
+	delayMicrosecondTimer1(duration);
+}
 void main(){
 	systemInit();	
 	uartInit();
 	uartPrintln("JTAG Demo");	
+	initTimers();	
 
 	JTAGInterface jtag;
 	jtag_init(&jtag);
@@ -37,11 +50,16 @@ void main(){
 			uartWriteChar(cmd);
 			switch(cmd){
 				case 'i':
-					uartPrintln("Entering SPW Mode");
+					uartPrintln("Entering SbW Mode");
 					enterSBWMode(&jtag);
+					break;
+				case 'x':
+					uartPrintln("Exit SBW Mode");
+					exitSBWMode(&jtag);
 					break;
 				default:
 					uartPrintln("NA");
+					break;
 			}
 		}
 	}
@@ -50,8 +68,21 @@ void main(){
 
 
 
+void exitSBWMode(JTAGInterface *jtag){
+ 	resetTCK(jtag);
+	delay_us(200);
+	setTDIO(jtag);
+}
 void enterSBWMode(JTAGInterface *jtag){
-
+	resetTCK(jtag);
+	setTDIO(jtag);
+	delay_ms(20);
+	setTCK(jtag);
+	delay_ms(20);
+	resetTCK(jtag);
+	delay_us(1);
+	setTCK(jtag);
+	delay_ms(5);
 }
 void jtag_init(JTAGInterface *jtag){
 	jtag->tck_port = 2;
